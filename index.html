@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tester głosek – Nauka literek</title>
+<style>
+:root{font-family:Arial,sans-serif;color:#173047;background:#f4f8ff}*{box-sizing:border-box}body{margin:0;padding:20px}main{max-width:850px;margin:auto}h1{margin-bottom:6px}p{line-height:1.5}.panel{background:white;border-radius:20px;padding:20px;margin:18px 0;box-shadow:0 3px 14px #17304716}.letters{display:grid;grid-template-columns:repeat(auto-fit,minmax(65px,1fr));gap:10px}.letter{border:2px solid #c7d9ec;background:#fff;border-radius:15px;font-size:30px;font-weight:bold;min-height:70px;cursor:pointer}.letter[aria-pressed=true]{background:#d5f0df;border-color:#2b9363}.display{text-align:center;font-size:110px;font-weight:bold;color:#19704b;margin:8px}.actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}button{touch-action:manipulation} .action{border:0;background:#225cb1;color:white;border-radius:14px;padding:17px 12px;font-size:17px;font-weight:bold;cursor:pointer}.action.secondary{background:#277b5b}.controls{display:flex;flex-wrap:wrap;gap:18px;align-items:center}select,input{font-size:16px;max-width:100%}label{display:grid;gap:6px;font-weight:bold}.note{font-size:14px;color:#475569}.status{min-height:24px;font-weight:bold}button:focus-visible,select:focus-visible{outline:3px solid orange;outline-offset:3px}
+</style></head>
+<body><main>
+<h1>🔊 Tester polskich głosek</h1>
+<p>Sprawdzamy, czy głos urządzenia potrafi wypowiedzieć głoskę zamiast nazwy litery. Wybierz literę i porównaj trzy sposoby. To eksperyment — syntezator może nadal mówić nazwy liter.</p>
+<section class="panel"><h2>1. Wybierz literę</h2><div id="letters" class="letters"></div><div id="display" class="display" aria-live="polite">P</div></section>
+<section class="panel"><h2>2. Posłuchaj</h2><div class="actions">
+<button class="action" data-mode="letter">🔊 Sama litera</button>
+<button class="action" data-mode="repeat">🔊 Powtórzona głoska</button>
+<button class="action secondary" data-mode="word">🔊 Słowo przykładowe</button>
+</div><p id="sample" class="note"></p><p id="status" class="status" role="status"></p></section>
+<section class="panel"><h2>3. Ustawienia głosu</h2><div class="controls">
+<label>Głos polski<select id="voice"></select></label>
+<label>Tempo: <output id="rateValue">0.8</output><input id="rate" type="range" min="0.5" max="1.3" step="0.1" value="0.8"></label>
+<button id="stop" class="action secondary">■ Zatrzymaj</button>
+</div><p class="note">Dostępne głosy zależą od systemu i przeglądarki. Na iPadzie i komputerze mogą brzmieć inaczej.</p></section>
+<p class="note">Ważne: głoski zwarte (np. P, B, T, K) nie mają naturalnego długiego brzmienia. Powtarzanie litery to tylko test, a nie gwarancja poprawnej wymowy fonetycznej. Odtwarzanie wymaga kliknięcia przycisku.</p>
+</main><script>
+const samples={A:'aparat',Ą:'ą',B:'but',C:'cebula',Ć:'ćma',D:'dom',E:'ekran',Ę:'ę',F:'foka',G:'garnek',H:'hamak',I:'igła',J:'jabłko',K:'kot',L:'las',Ł:'łódka',M:'motyl',N:'nos',Ń:'koń',O:'oko',Ó:'ósemka',P:'pies',R:'rak',S:'sok',Ś:'ślimak',T:'tata',U:'ucho',W:'woda',Y:'mysz',Z:'zamek',Ź:'źrebak',Ż:'żaba'};
+const alphabet=Object.keys(samples);let selected='P', voices=[];
+const letters=document.getElementById('letters'),display=document.getElementById('display'),sample=document.getElementById('sample'),status=document.getElementById('status'),voiceSelect=document.getElementById('voice'),rate=document.getElementById('rate');
+for(const l of alphabet){const b=document.createElement('button');b.className='letter';b.textContent=l;b.type='button';b.setAttribute('aria-label','Wybierz literę '+l);b.onclick=()=>select(l);letters.appendChild(b);}
+function select(l){selected=l;display.textContent=l;sample.textContent='Przykładowe słowo: '+samples[l];for(const b of letters.children)b.setAttribute('aria-pressed',String(b.textContent===l));status.textContent='';}
+function loadVoices(){if(!('speechSynthesis' in window))return;const old=voiceSelect.value;voices=speechSynthesis.getVoices().filter(v=>v.lang.toLowerCase().startsWith('pl'));voiceSelect.replaceChildren();if(!voices.length){const o=new Option('Brak polskiego głosu', '');voiceSelect.add(o);return;}voices.forEach((v,i)=>voiceSelect.add(new Option(v.name+' ('+v.lang+')',String(i))));if([...voiceSelect.options].some(o=>o.value===old))voiceSelect.value=old;}
+function speak(mode){if(!('speechSynthesis' in window)){status.textContent='Ta przeglądarka nie obsługuje syntezatora mowy.';return;}
+const value=mode==='letter'?selected.toLowerCase():mode==='repeat'?(selected.toLowerCase()+' '+selected.toLowerCase()+' '+selected.toLowerCase()):samples[selected];
+speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(value);u.lang='pl-PL';u.rate=Number(rate.value);const v=voices[Number(voiceSelect.value)];if(v)u.voice=v;u.onstart=()=>status.textContent='Odtwarzanie: '+value;u.onend=()=>status.textContent='Gotowe';u.onerror=e=>status.textContent='Nie udało się odtworzyć dźwięku ('+e.error+').';speechSynthesis.speak(u);}
+document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>speak(b.dataset.mode)));
+document.getElementById('stop').onclick=()=>{if('speechSynthesis' in window)speechSynthesis.cancel();status.textContent='Zatrzymano';};
+rate.oninput=()=>document.getElementById('rateValue').textContent=rate.value;
+if('speechSynthesis' in window){loadVoices();speechSynthesis.addEventListener?.('voiceschanged',loadVoices);}else status.textContent='Brak obsługi syntezatora w tej przeglądarce.';
+select('P');
+</script></body></html>
